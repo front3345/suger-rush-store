@@ -1,7 +1,12 @@
 /* ===== TABLE OF CONTENTS =====
-   1) Variables & global setup  2) Header & navigation  3) Hero section
-   4) Products & deals  5) Cart & wishlist  6) Modals  7) Animations & effects
-   8) Responsive breakpoints ===== */
+   1) Variables, reset & base      2) Promo bar & header/navbar     3) Hero
+   4) Products, deals, controls    5) Story, footer                 6) Cart & wishlist drawers
+   7) Modals, reviews, auth        8) Promo box, toast              9) Design upgrade (reveal, chips,
+      skeleton, steps, newsletter, success popup)                   10) Responsive breakpoints
+   11) Bootstrap navbar fixes      12) Mobile bottom nav & reduced motion
+   13) Design polish (fonts, depth) 14) Preloader & marquee         15) Visual extras (waves, sprinkles,
+      tilt, gradient text)         16) Sweet details (icing, gift box, empty states, add-to-cart FX)
+   NOTE: later blocks intentionally override earlier ones - keep this order. ===== */
 
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500..700;1,9..144,500..700&family=Nunito:wght@400;500;600;700;800&family=Pacifico&display=swap'); /* import fonts */
 
@@ -104,7 +109,7 @@ a { /* styles for element */
   padding: 0; /* inner spacing */
   margin: -1px; /* outer spacing */
   overflow: hidden; /* overflow handling */
-  clip: rect(0, 0, 0, 0);
+  clip: rect(0, 0, 0, 0); /* hide visually (screen-reader only) */
   white-space: nowrap; /* whitespace handling */
   border: 0; /* border */
 }
@@ -212,7 +217,7 @@ a { /* styles for element */
   display: flex; /* layout type */
   align-items: center; /* cross-axis alignment */
   gap: clamp(14px, 2.5vw, 32px); /* space between items */
-  list-style: none;
+  list-style: none; /* list bullets */
   margin: 0; /* outer spacing */
   padding: 0; /* inner spacing */
 }
@@ -1012,7 +1017,7 @@ a { /* styles for element */
   background: rgba(0, 0, 0, 0.55); /* background */
   /* Keep the page dimmed without blurring the product modal itself. */
   backdrop-filter: none; /* blur background */
-  -webkit-backdrop-filter: none;
+  -webkit-backdrop-filter: none; /* blur behind (Safari) */
   z-index: 0; /* stacking order */
 }
 
@@ -1417,7 +1422,7 @@ a { /* styles for element */
   margin: 0 auto; /* outer spacing */
   padding: 6px 6px 16px; /* inner spacing */
   min-height: 72px; /* minimum height */
-  scrollbar-width: none;
+  scrollbar-width: none; /* scrollbar size */
 }
 
 .category-chips::-webkit-scrollbar { display: none; } /* styles for categories */
@@ -1841,18 +1846,18 @@ a { /* styles for element */
 .check-circle { /* styles for element */
   stroke: var(--rose); /* SVG stroke color */
   stroke-width: 2.5; /* SVG stroke width */
-  stroke-dasharray: 151;
-  stroke-dashoffset: 151;
+  stroke-dasharray: 151; /* SVG dash pattern */
+  stroke-dashoffset: 151; /* SVG dash offset (draw effect) */
   animation: drawLine .7s .15s ease forwards; /* run animation */
 }
 
 .check-mark { /* styles for element */
   stroke: var(--roseDark); /* SVG stroke color */
   stroke-width: 3.5; /* SVG stroke width */
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-dasharray: 40;
-  stroke-dashoffset: 40;
+  stroke-linecap: round; /* SVG line ends */
+  stroke-linejoin: round; /* SVG line corners */
+  stroke-dasharray: 40; /* SVG dash pattern */
+  stroke-dashoffset: 40; /* SVG dash offset (draw effect) */
   animation: drawLine .45s .75s ease forwards; /* run animation */
 }
 
@@ -2179,7 +2184,6 @@ a { /* styles for element */
   .reveal { opacity: 1; } /* styles for element */
 }
 
-
 /* =====================================================
 DESIGN POLISH — fonts, spacing, depth, micro-interactions
 ===================================================== */
@@ -2192,8 +2196,8 @@ DESIGN POLISH — fonts, spacing, depth, micro-interactions
 }
 
 body { /* styles for element */
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased; /* font smoothing */
+  -moz-osx-font-smoothing: grayscale; /* font smoothing (Firefox) */
   text-rendering: optimizeLegibility; /* text rendering quality */
   line-height: 1.65; /* line height */
   font-weight: 500; /* font weight */
@@ -2215,7 +2219,7 @@ p { text-wrap: pretty; } /* styles for element */
 .site-header { /* styles for header */
   background: color-mix(in srgb, var(--cream) 82%, transparent); /* background */
   backdrop-filter: blur(16px) saturate(1.3); /* blur background */
-  -webkit-backdrop-filter: blur(16px) saturate(1.3);
+  -webkit-backdrop-filter: blur(16px) saturate(1.3); /* blur behind (Safari) */
   box-shadow: 0 6px 24px rgba(75, 48, 40, .05); /* shadow */
 }
 
@@ -2750,7 +2754,7 @@ scroll progress, split headings, gradient text, patterns
   opacity: 0; /* opacity */
   transform: translateY(.7em) rotate(8deg); /* transform (move/rotate/scale) */
   transition: opacity .5s ease, transform .65s cubic-bezier(.2, 1.3, .4, 1); /* smooth transition */
-  transition-delay: calc(var(--i, 0) * 28ms);
+  transition-delay: calc(var(--i, 0) * 28ms); /* transition delay */
 }
 
 .split.split-in .ch { opacity: 1; transform: none; } /* styles for element */
@@ -2906,12 +2910,12 @@ add-to-cart sprinkles & flying picture
   top: calc(100% - 1px); /* offset from top */
   height: 46px; /* height */
   pointer-events: none; /* pointer interaction */
-  -webkit-mask-repeat: repeat-x;
-  mask-repeat: repeat-x;
-  -webkit-mask-position: left top;
-  mask-position: left top;
-  -webkit-mask-size: 420px 46px;
-  mask-size: 420px 46px;
+  -webkit-mask-repeat: repeat-x; /* mask tiling (Safari) */
+  mask-repeat: repeat-x; /* mask tiling */
+  -webkit-mask-position: left top; /* mask position (Safari) */
+  mask-position: left top; /* mask position */
+  -webkit-mask-size: 420px 46px; /* mask size (Safari) */
+  mask-size: 420px 46px; /* mask size */
 }
 
 .marquee::after { /* decorative element - styles for marquee strip */
@@ -2932,8 +2936,8 @@ add-to-cart sprinkles & flying picture
   .marquee::after, /* decorative element - styles for marquee strip */
   .marquee::before { /* decorative element - styles for marquee strip */
     height: 31px; /* height */
-    -webkit-mask-size: 280px 31px;
-    mask-size: 280px 31px;
+    -webkit-mask-size: 280px 31px; /* mask size (Safari) */
+    mask-size: 280px 31px; /* mask size */
   }
 }
 
