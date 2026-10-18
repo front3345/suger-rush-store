@@ -1,7 +1,8 @@
 // ===== TABLE OF CONTENTS =====
-// 1) Config & DOM refs  2) Theme  3) Storage (cart/wishlist)  4) Auth
-// 5) Reviews  6) Products & API  7) Filters  8) Cart & wishlist  9) Modals
-// 10) Promo & orders  11) Visual effects
+// 1) Config & DOM refs   2) Theme   3) Storage (cart/wishlist)   4) Auth (login/register)
+// 5) Reviews   6) Helpers & API products   7) Rendering (cards, chips, skeletons)
+// 8) Search & filters   9) Wishlist & cart   10) Modals   11) Event listeners
+// 12) Orders & promo   13) Startup + visual effects (preloader, sprinkles, tilt, cart fly)
 
 const API_URL = "https://devsapihub.com/api-fast-food"; // declare constant
 const DEAL_DISCOUNT = 0.15; // declare constant
@@ -101,6 +102,7 @@ document.getElementById("current-year").textContent =
 // ==============================
 // Theme Management
 // ==============================
+// Purpose: Light/dark mode: restores the saved theme and animates the switch.
 
 function initTheme() { // function: restore saved theme
   const savedTheme =
@@ -124,7 +126,7 @@ themeToggleBtn.addEventListener("click", () => { // attach event listener
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   // Browsers without the View Transitions API (or reduced motion): instant switch
   if (!document.startViewTransition || reduceMotion) { // condition
-    applyTheme();
+    applyTheme(); // call apply theme
     return; // exit function
   }
   // Circle expands from the toggle button
@@ -162,11 +164,24 @@ initTheme(); // call: restore saved theme
 // ==============================
 // Cart Local Storage
 // ==============================
+// Purpose: Saves/loads each user's cart so it survives page reloads.
+
+// Per-user storage key: each account keeps its own cart and wishlist
+function userStorageKey(base) { // function: user storage key
+  try { // try safely
+    const user = JSON.parse(localStorage.getItem("sugarRushCurrentUser")); // read from localStorage
+    return user && user.email ? `${base}:${user.email}` : null; // null = guest
+  } catch (error) { // handle error
+    return null; // return result
+  }
+}
 
 function loadCart() { // function: read cart from storage
   try { // try safely
+    const key = userStorageKey("sugarRushCart"); // define key
+    if (!key) return []; // guests have no saved cart
     const saved = JSON.parse(
-      localStorage.getItem("sugarRushCart") || "[]"
+      localStorage.getItem(key) || "[]"
     );
     if (!Array.isArray(saved)) return []; // condition
     return saved
@@ -189,8 +204,10 @@ function loadCart() { // function: read cart from storage
 
 function saveCart() { // function: save cart to storage
   try { // try safely
+    const key = userStorageKey("sugarRushCart"); // define key
+    if (!key) return; // never save a guest cart
     localStorage.setItem(
-      "sugarRushCart",
+      key,
       JSON.stringify(cart)
     );
   } catch (error) { // handle error
@@ -201,11 +218,14 @@ function saveCart() { // function: save cart to storage
 // ==============================
 // Wishlist Local Storage
 // ==============================
+// Purpose: Saves/loads each user's wishlist.
 
 function loadWishlist() { // function: read wishlist from storage
   try { // try safely
+    const key = userStorageKey("sugarRushWishlist"); // define key
+    if (!key) return []; // guests have no saved wishlist
     const saved = JSON.parse(
-      localStorage.getItem("sugarRushWishlist") || "[]"
+      localStorage.getItem(key) || "[]"
     );
     return Array.isArray(saved) ? saved : []; // return result
   } catch (error) { // handle error
@@ -216,8 +236,10 @@ function loadWishlist() { // function: read wishlist from storage
 
 function saveWishlist() { // function: save wishlist to storage
   try { // try safely
+    const key = userStorageKey("sugarRushWishlist"); // define key
+    if (!key) return; // never save a guest wishlist
     localStorage.setItem(
-      "sugarRushWishlist",
+      key,
       JSON.stringify(wishlist)
     );
   } catch (error) { // handle error
@@ -228,6 +250,7 @@ function saveWishlist() { // function: save wishlist to storage
 // ==============================
 // Authentication Navigation
 // ==============================
+// Purpose: Switches the navbar button between Log In and Log Out.
 
 function updateAuthNav() { // function: update login/logout button
   if (currentUser) { // condition
@@ -241,8 +264,12 @@ function updateAuthNav() { // function: update login/logout button
         localStorage.removeItem("sugarRushPromo"); // remove from localStorage
         promoInput.value = ""; // set value
         setPromoMessage(""); // call: show promo code message
-        cart = []; // assign/update value
+        cart = []; // clear on-screen cart only (saved data stays under the user's key)
+        wishlist = []; // clear on-screen wishlist only
         updateCart(); // call: refresh cart UI and totals
+        updateWishlist(); // refresh wishlist UI
+        applyFilters(); // refresh heart icons
+        displayDeals(); // refresh heart icons in deals
         updateAuthNav(); // call: update login/logout button
         closeCart(); // call: close cart drawer
         closeWishlist(); // call: close wishlist drawer
@@ -258,6 +285,7 @@ function updateAuthNav() { // function: update login/logout button
 // ==============================
 // Open Authentication Modal
 // ==============================
+// Purpose: Shows the login or register popup.
 
 function openAuthModal(view = "login") { // function: open login/register modal
   if (view === "login") { // condition
@@ -278,6 +306,7 @@ function openAuthModal(view = "login") { // function: open login/register modal
 // ==============================
 // Close Authentication Modal
 // ==============================
+// Purpose: Hides the auth popup and unlocks page scroll.
 
 function closeAuthModal() { // function: close login/register modal
   authModal.hidden = true; // show/hide element
@@ -293,6 +322,7 @@ function closeAuthModal() { // function: close login/register modal
 // ==============================
 // Toggle Password Visibility
 // ==============================
+// Purpose: Eye button that shows/hides the typed password.
 
 document.querySelectorAll(".toggle-password").forEach(button => { // loop over items
   button.addEventListener("click", () => { // attach event listener
@@ -313,6 +343,7 @@ document.querySelectorAll(".toggle-password").forEach(button => { // loop over i
 // ==============================
 // Star Rating Picker
 // ==============================
+// Purpose: Lets the user pick 1-5 stars for a review.
 
 starPicker.addEventListener("click", (e) => { // attach event listener
   const star = e.target.closest("span"); // declare constant
@@ -331,6 +362,7 @@ starPicker.addEventListener("click", (e) => { // attach event listener
 // ==============================
 // Submit Product Review
 // ==============================
+// Purpose: Saves a new review and updates the rating.
 
 reviewForm.addEventListener("submit", (e) => { // attach event listener
   e.preventDefault(); // prevent default behavior
@@ -373,6 +405,7 @@ reviewForm.addEventListener("submit", (e) => { // attach event listener
 // ==============================
 // Update Product Review Summary
 // ==============================
+// Purpose: Shows the average rating and review count in the modal.
 
 function updateProductModalReviews(product) { // function: update product rating summary
   const productId = String(product.id); // declare constant
@@ -398,6 +431,7 @@ function updateProductModalReviews(product) { // function: update product rating
 // ==============================
 // Escape HTML
 // ==============================
+// Purpose: Prevents HTML injection by escaping special characters.
 
 function escapeHTML(value) { // function: escape HTML special characters
   return String(value ?? "").replace(/[&<>"']/g, character => ({ // return result
@@ -412,6 +446,7 @@ function escapeHTML(value) { // function: escape HTML special characters
 // ==============================
 // Format Price
 // ==============================
+// Purpose: Formats any number as a 2-decimal price.
 
 function formatPrice(value) { // function: format price with 2 decimals
   return Number(value || 0).toFixed(2); // return result
@@ -420,6 +455,7 @@ function formatPrice(value) { // function: format price with 2 decimals
 // ==============================
 // Normalize API Products
 // ==============================
+// Purpose: Accepts different API response shapes and returns a product array.
 
 function normalizeProducts(payload) { // function: normalize API product data
   if (Array.isArray(payload)) return payload; // condition
@@ -432,6 +468,7 @@ function normalizeProducts(payload) { // function: normalize API product data
 // ==============================
 // Product Price
 // ==============================
+// Purpose: Reads the price from whichever field the API uses.
 
 function productPrice(product) { // function: get product price
   return Number(
@@ -445,6 +482,7 @@ function productPrice(product) { // function: get product price
 // ==============================
 // Product Image
 // ==============================
+// Purpose: Reads the image URL from whichever field the API uses.
 
 function getProductImage(product) { // function: get product image
   return (
@@ -458,6 +496,7 @@ function getProductImage(product) { // function: get product image
 // ==============================
 // Check Product Deal
 // ==============================
+// Purpose: Tells whether a product is one of the discounted deals.
 
 function isDeal(product) { // function: is the product a deal?
   const index = allProducts.findIndex(
@@ -469,6 +508,7 @@ function isDeal(product) { // function: is the product a deal?
 // ==============================
 // Final Product Price
 // ==============================
+// Purpose: Price after the deal discount (if any).
 
 function finalPrice(product) { // function: final price after discount
   const price = productPrice(product); // declare constant
@@ -480,6 +520,7 @@ function finalPrice(product) { // function: final price after discount
 // ==============================
 // Fetch Products from API
 // ==============================
+// Purpose: Loads the menu from the API and renders the whole store.
 
 async function getProducts() { // function: fetch products from API
   productsContainer.innerHTML = skeletonCards(8); // set inner HTML
@@ -545,6 +586,7 @@ async function getProducts() { // function: fetch products from API
 // ==============================
 // Fill Category Filter
 // ==============================
+// Purpose: Builds the category dropdown and chips from the products.
 
 function fillCategories() { // function: fill category dropdown
   const currentCategory = categoryFilter.value; // declare constant
@@ -578,6 +620,7 @@ let revealObserver = null; // declare variable
 // ==============================
 // Scroll Reveal Animation
 // ==============================
+// Purpose: Fades elements in when they scroll into view.
 
 function observeReveals() { // function: reveal elements on scroll
   const items = document.querySelectorAll(".reveal:not(.in)"); // declare constant
@@ -590,7 +633,7 @@ function observeReveals() { // function: reveal elements on scroll
       entries.forEach(entry => { // loop over items
         if (entry.isIntersecting) { // condition
           entry.target.classList.add("in"); // add class
-          revealObserver.unobserve(entry.target);
+          revealObserver.unobserve(entry.target); // call unobserve
         }
       }); // close callback
     }, {
@@ -604,6 +647,7 @@ function observeReveals() { // function: reveal elements on scroll
 // ==============================
 // Skeleton Loading Cards
 // ==============================
+// Purpose: Placeholder cards shown while products load.
 
 function skeletonCards(count = 4) { // function: placeholder loading cards
   return Array.from({ length: count }, () => `
@@ -631,6 +675,7 @@ function skeletonCards(count = 4) { // function: placeholder loading cards
 // ==============================
 // Category Emoji
 // ==============================
+// Purpose: Picks an emoji that matches a category name.
 
 function categoryEmoji(name) { // function: emoji for each category
   const n = String(name)
@@ -685,6 +730,7 @@ function categoryEmoji(name) { // function: emoji for each category
 // ==============================
 // Render Category Chips
 // ==============================
+// Purpose: Draws the clickable category buttons.
 
 function renderCategoryChips(categories) { // function: render category chips
   const wrap = document.getElementById("category-chips"); // get element by id
@@ -725,6 +771,7 @@ function syncCategoryChips() { // function: sync active category chip
 // ==============================
 // Product Badge
 // ==============================
+// Purpose: Chooses the 'Best Seller' / 'New' tag for a card.
 
 function productBadge(product) { // function: product badge (Best Seller/New)
   const index = allProducts.findIndex(
@@ -739,6 +786,7 @@ function productBadge(product) { // function: product badge (Best Seller/New)
 // ==============================
 // Product Card
 // ==============================
+// Purpose: Builds the HTML for one product card.
 
 function productCard(product, dealSection = false) { // function: build product card HTML
   const originalPrice = productPrice(product); // declare constant
@@ -845,6 +893,7 @@ function productCard(product, dealSection = false) { // function: build product 
 // ==============================
 // Display Deals
 // ==============================
+// Purpose: Renders the special-deals section.
 
 function displayDeals() { // function: render deals section
   const deals = allProducts.slice(0, DEALS_COUNT); // declare constant
@@ -856,6 +905,7 @@ function displayDeals() { // function: render deals section
 // ==============================
 // Search, Filter and Sort
 // ==============================
+// Purpose: Filters by search/category, sorts, and re-renders the grid.
 
 function applyFilters() { // function: apply search, filter and sort
   const query = searchInput.value.trim().toLowerCase(); // declare constant
@@ -898,6 +948,7 @@ function applyFilters() { // function: apply search, filter and sort
 // ==============================
 // Toast Notification
 // ==============================
+// Purpose: Small popup message that disappears by itself.
 
 function showToast(message) { // function: show short toast message
   const toast = document.getElementById("cart-toast"); // get element by id
@@ -912,15 +963,21 @@ function showToast(message) { // function: show short toast message
 // ==============================
 // Toggle Wishlist
 // ==============================
+// Purpose: Adds or removes a product from the wishlist.
 
 function toggleWishlist(product) { // function: add/remove from wishlist
   if (!product) return; // guard: early exit
+  if (!currentUser) { // wishlist requires an account
+    showToast("Please log in to add items to your wishlist."); // show a notification
+    openAuthModal("login"); // call open auth modal
+    return; // stop here
+  }
   const id = String(product.id); // declare constant
   const index = wishlist.findIndex(
     item => String(item.id) === id
   );
   if (index >= 0) { // condition
-    wishlist.splice(index, 1);
+    wishlist.splice(index, 1); // call splice
     showToast(`${product.name} removed from wishlist.`); // call: show short toast message
   } else { // else branch
     wishlist.push({
@@ -941,6 +998,7 @@ function toggleWishlist(product) { // function: add/remove from wishlist
 // ==============================
 // Update Wishlist
 // ==============================
+// Purpose: Re-renders the wishlist drawer and its counters.
 
 function updateWishlist() { // function: refresh wishlist UI
   saveWishlist(); // call: save wishlist to storage
@@ -998,6 +1056,7 @@ ${emptyStateHTML("wishlist")}
 // ==============================
 // Open Wishlist
 // ==============================
+// Purpose: Opens the wishlist drawer.
 
 function openWishlist() { // function: open wishlist drawer
   wishlistDrawer.classList.add("open"); // add class
@@ -1010,6 +1069,7 @@ function openWishlist() { // function: open wishlist drawer
 // ==============================
 // Close Wishlist
 // ==============================
+// Purpose: Closes the wishlist drawer.
 
 function closeWishlist() { // function: close wishlist drawer
   wishlistDrawer.classList.remove("open"); // remove class
@@ -1030,6 +1090,7 @@ function closeWishlist() { // function: close wishlist drawer
 // ==============================
 // Add Product to Cart
 // ==============================
+// Purpose: Adds a product (requires login) or increases its quantity.
 
 function addToCart(product) { // function: add product to cart
   if (!product) return; // guard: early exit
@@ -1063,6 +1124,7 @@ function addToCart(product) { // function: add product to cart
 // ==============================
 // Update Cart
 // ==============================
+// Purpose: Recalculates totals/discount/free-delivery and re-renders the cart.
 
 function updateCart() { // function: refresh cart UI and totals
   saveCart(); // call: save cart to storage
@@ -1204,6 +1266,7 @@ ${emptyStateHTML("cart")}
 // ==============================
 // Animate Cart Button
 // ==============================
+// Purpose: Small bump animation on the cart button.
 
 function bumpCart() { // function: bump animation on cart button
   [cartButton, bnavCartBtn].forEach(el => { // loop over items
@@ -1216,6 +1279,7 @@ function bumpCart() { // function: bump animation on cart button
 // ==============================
 // Open Cart
 // ==============================
+// Purpose: Opens the cart drawer (requires login).
 
 function openCart() { // function: open cart drawer
   if (!currentUser) { // condition
@@ -1233,6 +1297,7 @@ function openCart() { // function: open cart drawer
 // ==============================
 // Close Cart
 // ==============================
+// Purpose: Closes the cart drawer.
 
 function closeCart() { // function: close cart drawer
   cartDrawer.classList.remove("open"); // remove class
@@ -1253,6 +1318,7 @@ function closeCart() { // function: close cart drawer
 // ==============================
 // Open Product Details
 // ==============================
+// Purpose: Fills and opens the product details popup.
 
 function openProductModal(product) { // function: open product details
   selectedProduct = product; // assign/update value
@@ -1286,6 +1352,7 @@ function openProductModal(product) { // function: open product details
 // ==============================
 // Close Product Details
 // ==============================
+// Purpose: Closes the product details popup.
 
 function closeProductModal() { // function: close product details
   productModal.hidden = true; // show/hide element
@@ -1302,6 +1369,7 @@ function closeProductModal() { // function: close product details
 // ==============================
 // Product Click Events
 // ==============================
+// Purpose: Connects clicks on product grids to the handler below.
 
 productsContainer.addEventListener("click", handleProductClick); // attach event listener
 
@@ -1310,6 +1378,7 @@ dealsContainer.addEventListener("click", handleProductClick); // attach event li
 // ==============================
 // Wishlist heart: pulse + burst of little hearts
 // ==============================
+// Purpose: Heart animation when a product is wishlisted; also the central click handler for cards.
 
 function celebrateWishlist(productId, rect) { // function: heart burst effect
   // pulse every heart button of this product (cards are re-rendered, so query again)
@@ -1405,6 +1474,7 @@ function handleProductClick(event) { // function: handle clicks inside product c
 // ==============================
 // Keyboard Access for Products
 // ==============================
+// Purpose: Enter/Space opens a focused product card (accessibility).
 
 [productsContainer, dealsContainer].forEach(container => { // loop over items
   container.addEventListener("keydown", event => { // attach event listener
@@ -1425,6 +1495,7 @@ function handleProductClick(event) { // function: handle clicks inside product c
 // ==============================
 // Search and Filter Events
 // ==============================
+// Purpose: Re-filters products when the controls change.
 
 searchInput.addEventListener("input", applyFilters); // attach event listener
 
@@ -1435,6 +1506,7 @@ sortFilter.addEventListener("change", applyFilters); // attach event listener
 // ==============================
 // Cart and Wishlist Events
 // ==============================
+// Purpose: Open/close buttons for the cart and wishlist drawers.
 
 cartButton.addEventListener("click", openCart); // attach event listener
 
@@ -1452,6 +1524,7 @@ cartOverlay.addEventListener("click", () => { // attach event listener
 // ==============================
 // Clear Cart
 // ==============================
+// Purpose: Empties the cart.
 
 clearCartButton.addEventListener("click", () => { // attach event listener
   cart = []; // assign/update value
@@ -1462,6 +1535,7 @@ clearCartButton.addEventListener("click", () => { // attach event listener
 // ==============================
 // Clear Wishlist
 // ==============================
+// Purpose: Empties the wishlist.
 
 clearWishlistButton.addEventListener("click", () => { // attach event listener
   wishlist = []; // assign/update value
@@ -1474,6 +1548,7 @@ clearWishlistButton.addEventListener("click", () => { // attach event listener
 // ==============================
 // Cart Item Actions
 // ==============================
+// Purpose: Handles +, -, remove and upsell buttons inside the cart.
 
 cartItems.addEventListener("click", event => { // attach event listener
   const button = event.target.closest("button[data-action]"); // declare constant
@@ -1509,6 +1584,7 @@ cartItems.addEventListener("click", event => { // attach event listener
 // ==============================
 // Wishlist Item Actions
 // ==============================
+// Purpose: Handles add-to-cart / remove buttons inside the wishlist.
 
 wishlistItems.addEventListener("click", event => { // attach event listener
   const button = event.target.closest("button[data-action]"); // declare constant
@@ -1535,6 +1611,7 @@ wishlistItems.addEventListener("click", event => { // attach event listener
 // ==============================
 // Product Modal Events
 // ==============================
+// Purpose: Close and add-to-cart buttons of the product popup.
 
 closeModalButton.addEventListener("click", closeProductModal); // attach event listener
 
@@ -1553,6 +1630,7 @@ modalAddButton.addEventListener("click", () => { // attach event listener
 // ==============================
 // Authentication Modal Events
 // ==============================
+// Purpose: Close and switch (login/register) actions of the auth popup.
 
 closeAuthButton.addEventListener("click", closeAuthModal); // attach event listener
 
@@ -1573,6 +1651,7 @@ switchToLogin.addEventListener("click", () => { // attach event listener
 // ==============================
 // Register Form
 // ==============================
+// Purpose: Creates a new account and logs the user in.
 
 registerForm.disableSelection = false; // assign/update value
 
@@ -1598,26 +1677,21 @@ registerForm.addEventListener("submit", event => { // attach event listener
     email,
     password
   };
-  users.push(newUser);
+  users.push(newUser); // call push
   localStorage.setItem(
     "sugarRushUsers",
     JSON.stringify(users)
   );
-  currentUser = newUser; // assign/update value
-  localStorage.setItem(
-    "sugarRushCurrentUser",
-    JSON.stringify(currentUser)
-  );
-  closeAuthModal(); // call: close login/register modal
-  updateAuthNav(); // call: update login/logout button
-  showToast(
-    `Welcome, ${name}! Account created successfully.`
-  );
+  // Do NOT log in automatically: send the user to the login form instead
+  openAuthModal("login"); // call: open login/register modal
+  document.getElementById("login-email").value = email; // prefill email
+  showToast("Account created! Please log in to continue."); // show a notification
 }); // close callback
 
 // ==============================
 // Login Form
 // ==============================
+// Purpose: Checks credentials and logs the user in.
 
 loginForm.addEventListener("submit", event => { // attach event listener
   event.preventDefault(); // prevent default behavior
@@ -1641,6 +1715,12 @@ loginForm.addEventListener("submit", event => { // attach event listener
     "sugarRushCurrentUser",
     JSON.stringify(currentUser)
   );
+  cart = loadCart(); // restore this user's saved cart
+  wishlist = loadWishlist(); // restore this user's saved wishlist
+  updateCart(); // call: refresh cart UI and totals
+  updateWishlist(); // refresh wishlist UI
+  applyFilters(); // refresh heart icons
+  displayDeals(); // refresh heart icons in deals
   closeAuthModal(); // call: close login/register modal
   updateAuthNav(); // call: update login/logout button
   showToast(`Welcome back, ${user.name}!`); // call: show short toast message
@@ -1649,6 +1729,7 @@ loginForm.addEventListener("submit", event => { // attach event listener
 // ==============================
 // Escape Key Handling
 // ==============================
+// Purpose: Esc closes the top-most open popup or drawer.
 
 document.addEventListener("keydown", event => { // attach event listener
   if (event.key === "Escape") { // condition
@@ -1667,6 +1748,7 @@ document.addEventListener("keydown", event => { // attach event listener
 // ==============================
 // Order Success Popup
 // ==============================
+// Purpose: Shows the 'Order placed' confirmation.
 
 function showOrderSuccess(order) { // function: show order success popup
   const firstName = currentUser
@@ -1733,6 +1815,7 @@ document.addEventListener("keydown", event => { // attach event listener
 // ==============================
 // Place Order
 // ==============================
+// Purpose: Validates the cart, saves the order, and shows success.
 
 const placeOrderBtn = document.getElementById("place-order-btn"); // get element by id
 
@@ -1773,7 +1856,7 @@ placeOrderBtn.addEventListener("click", () => { // attach event listener
   try { // try safely
     const orders =
       JSON.parse(localStorage.getItem("sugarRushOrders")) || []; // read from localStorage
-    orders.push(order);
+    orders.push(order); // call push
     localStorage.setItem(
       "sugarRushOrders",
       JSON.stringify(orders)
@@ -1794,6 +1877,7 @@ placeOrderBtn.addEventListener("click", () => { // attach event listener
 // ==============================
 // Promo Code
 // ==============================
+// Purpose: Validates and applies/removes the discount code.
 
 function setPromoMessage(text, type = "") { // function: show promo code message
   promoMessage.textContent = text; // set text
@@ -1855,6 +1939,7 @@ promoRemoveBtn.addEventListener("click", () => { // attach event listener
 // ==============================
 // Promo Bar
 // ==============================
+// Purpose: Closes the top banner / opens register from it.
 
 const promoBar = document.getElementById("promo-bar"); // get element by id
 
@@ -1869,6 +1954,7 @@ document.getElementById("promo-register-link").addEventListener("click", () => {
 // ==============================
 // Category Chips
 // ==============================
+// Purpose: Clicking a chip filters the menu and scrolls to it.
 
 document.getElementById("category-chips").addEventListener("click", event => { // attach event listener
   const chip = event.target.closest(".category-chip"); // declare constant
@@ -1884,6 +1970,7 @@ document.getElementById("category-chips").addEventListener("click", event => { /
 // ==============================
 // Mobile Bottom Navigation
 // ==============================
+// Purpose: Cart and wishlist buttons of the mobile bar.
 
 bnavCartBtn.addEventListener("click", openCart); // attach event listener
 
@@ -1892,6 +1979,7 @@ bnavWishBtn.addEventListener("click", openWishlist); // attach event listener
 // ==============================
 // Newsletter Subscription
 // ==============================
+// Purpose: Stores the subscriber email.
 
 document.getElementById("newsletter-form").addEventListener("submit", event => { // attach event listener
   event.preventDefault(); // prevent default behavior
@@ -1901,7 +1989,7 @@ document.getElementById("newsletter-form").addEventListener("submit", event => {
     const list =
       JSON.parse(localStorage.getItem("sugarRushNewsletter")) || []; // read from localStorage
     if (!list.includes(email)) { // condition
-      list.push(email);
+      list.push(email); // call push
     }
     localStorage.setItem(
       "sugarRushNewsletter",
@@ -1917,6 +2005,7 @@ document.getElementById("newsletter-form").addEventListener("submit", event => {
 // ==============================
 // Scroll Reveal for Static Sections
 // ==============================
+// Purpose: Adds reveal-on-scroll to fixed page sections, then runs the startup calls.
 
 [
   ".section-heading",
@@ -1946,6 +2035,7 @@ updateWishlist(); // call: refresh wishlist UI
 getProducts(); // call: fetch products from API
 
 // ===== PRELOADER =====
+// Purpose: loading screen that hides once the page has loaded.
 (function () { // self-invoking function (IIFE)
   const preloader = document.getElementById("preloader"); // get element by id
   if (!preloader) return; // guard: early exit
@@ -1966,6 +2056,7 @@ getProducts(); // call: fetch products from API
 })(); // end of IIFE
 
 // ===== VISUAL EXTRAS =====
+// Purpose: decorative effects (progress bar, split headings, sprinkles, card tilt).
 // scroll progress, split headings, hero sprinkles + parallax, custom cursor, 3D card tilt
 (function visualExtras() { // self-invoking function (IIFE)
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches; // declare constant
@@ -1996,7 +2087,7 @@ getProducts(); // call: fetch products from API
       if (!ticking) { ticking = true; requestAnimationFrame(update); }
     }, { passive: true });
     window.addEventListener("resize", update); // attach event listener
-    update();
+    update(); // call update
   }
   /* ---------- 2) Headings that reveal letter by letter ---------- */
   function splitHeadings() { // function: split headings into animated letters
@@ -2031,9 +2122,9 @@ getProducts(); // call: fetch products from API
               }); // close callback
               frag.appendChild(word); // append element
             }); // close callback
-            node.replaceChild(frag, child);
+            node.replaceChild(frag, child); // call replaceChild
           } else if (child.nodeType === 1) { // else-if condition
-            walk(child);
+            walk(child); // call walk
           }
         }); // close callback
       })(h);
@@ -2047,7 +2138,7 @@ getProducts(); // call: fetch products from API
       entries.forEach(entry => { // loop over items
         if (entry.isIntersecting) { // condition
           entry.target.classList.add("split-in"); // add class
-          io.unobserve(entry.target);
+          io.unobserve(entry.target); // call unobserve
         }
       }); // close callback
     }, { threshold: 0.4 });
@@ -2081,9 +2172,9 @@ getProducts(); // call: fetch products from API
       if (inner.className === "sp-heart") inner.textContent = "♥"; // set text
       wrap.appendChild(inner); // append element
       layer.appendChild(wrap); // append element
-      wraps.push(wrap);
+      wraps.push(wrap); // call push
     }
-    hero.insertBefore(layer, hero.firstChild);
+    hero.insertBefore(layer, hero.firstChild); // call insertBefore
     if (!finePointer) return; // guard: early exit
     let raf = null; // declare variable
     let nx = 0, ny = 0; // declare variable
@@ -2127,7 +2218,7 @@ getProducts(); // call: fetch products from API
     }); // close callback
     document.addEventListener("mouseout", e => { // attach event listener
       if (!e.relatedTarget && active) { // condition
-        reset(active);
+        reset(active); // call reset
         active = null; // assign/update value
       }
     }); // close callback
@@ -2141,6 +2232,7 @@ getProducts(); // call: fetch products from API
 })(); // end of IIFE
 
 // ===== ADD TO CART: sprinkles burst + product flies to the cart =====
+// Purpose: visual feedback when adding to the cart.
 let lastAddClick = { el: null, t: 0 }; // declare variable
 
 document.addEventListener("click", event => { // attach event listener
@@ -2236,6 +2328,7 @@ function playAddToCartEffect(product) { // function: add-to-cart effect
 }
 
 // ===== EMPTY STATES (cart + wishlist) =====
+// Purpose: friendly empty-cart/wishlist screen and its button.
 function emptyStateHTML(kind) { // function: empty cart/wishlist markup
   const copy = kind === "wishlist"
     ? {
