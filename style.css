@@ -6,7 +6,6 @@
    11) Bootstrap navbar fixes      12) Mobile bottom nav & reduced motion
    13) Design polish (fonts, depth) 14) Preloader & marquee         15) Visual extras (waves, sprinkles,
       tilt, gradient text)         16) Sweet details (icing, gift box, empty states, add-to-cart FX)
-   NOTE: later blocks intentionally override earlier ones - keep this order. ===== */
 
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500..700;1,9..144,500..700&family=Nunito:wght@400;500;600;700;800&family=Pacifico&display=swap'); /* import fonts */
 
